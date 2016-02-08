@@ -46,10 +46,10 @@ public:
 		int g_count = 0;
 		atomic<int32_t> lock = 0;//0 - no use; 1 - read; 2 - write
 		atomic<int32_t> rc = 0; //read count
+		atomic<int32_t> read_end = false;
 
 		thread t1([&]{
-			int32_t tmp = 0;
-			while (tmp < limit)
+			while (!read_end)
 			{
 				++rc;
 				int32_t ref = 2;
@@ -60,7 +60,6 @@ public:
 					succ = lock.compare_exchange_strong(ref, 1, memory_order_release, memory_order_acquire);
 				}
 
-				tmp = g_count;
 				cout << "read1 count:" << g_count << endl;
 
 				if (rc == 1)
@@ -72,8 +71,7 @@ public:
 		});
 
 		thread t2([&]{
-			int32_t tmp = 0;
-			while (tmp < limit)
+			while (!read_end)
 			{
 				++rc;
 				int32_t ref = 2;
@@ -84,7 +82,6 @@ public:
 					succ = lock.compare_exchange_strong(ref, 1, memory_order_release, memory_order_acquire);
 				}
 
-				tmp = g_count;
 				cout << "read2 count:" << g_count << endl;
 
 				if (rc == 1)
@@ -116,8 +113,9 @@ public:
 			}
 		});
 
+		t3.join();
+		read_end.store(1, memory_order_release);
 		t1.join();
 		t2.join();
-		t3.join();
 	}
 };
