@@ -6,6 +6,53 @@
 #include <iostream>
 using namespace std;
 
+template<typename T>
+class rw_lock_t
+{
+public:
+	typedef T typ;
+private:
+	atomic<typ> read_count_;
+	atomic<typ> lock_;
+public:
+	rw_lock_t() : read_count_(0), lock_(0){};
+
+	void acquire_read()
+	{
+		++read_count_;
+		int32_t ref = 2;
+		bool succ = false;
+		while (!succ && ref == 2)
+		{
+			ref = 0;
+			succ = lock_.compare_exchange_strong(ref, 1, memory_order_release, memory_order_acquire);
+		}
+	}
+
+	void release_read()
+	{
+		if (read_count_ == 1)
+			lock_.store(0, memory_order_release);
+		--read_count_;
+	}
+
+	void acquire_write()
+	{
+		int32_t ref = 2;
+		bool succ = false;
+		while (!succ)
+		{
+			ref = 0;
+			succ = lock_.compare_exchange_strong(ref, 2, memory_order_release, memory_order_acquire);
+		}
+	}
+
+	void release_write()
+	{
+		lock_.store(0, memory_order_release);
+	}
+};
+
 class atomics_tester_t
 {
 public:
@@ -44,27 +91,17 @@ public:
 	static void test2(int32_t limit)
 	{
 		int g_count = 0;
-		atomic<int32_t> lock = 0;//0 - no use; 1 - read; 2 - write
-		atomic<int32_t> rc = 0; //read count
+		rw_lock_t<int32_t> lock;
 		atomic<int32_t> read_end = false;
 
 		thread t1([&]{
 			while (!read_end)
 			{
-				++rc;
-				int32_t ref = 2;
-				bool succ = false;
-				while (!succ && ref == 2)
-				{
-					ref = 0;
-					succ = lock.compare_exchange_strong(ref, 1, memory_order_release, memory_order_acquire);
-				}
+				lock.acquire_read();
 
 				cout << "read1 count:" << g_count << endl;
 
-				if (rc == 1)
-					lock.store(0, memory_order_release);
-				--rc;
+				lock.release_read();
 
 				Sleep(1);
 			}
@@ -73,20 +110,11 @@ public:
 		thread t2([&]{
 			while (!read_end)
 			{
-				++rc;
-				int32_t ref = 2;
-				bool succ = false;
-				while (!succ && ref == 2)
-				{
-					ref = 0;
-					succ = lock.compare_exchange_strong(ref, 1, memory_order_release, memory_order_acquire);
-				}
+				lock.acquire_read();
 
 				cout << "read2 count:" << g_count << endl;
 
-				if (rc == 1)
-					lock.store(0, memory_order_release);
-				--rc;
+				lock.release_read();
 
 				Sleep(1);
 			}
@@ -96,18 +124,12 @@ public:
 			int32_t tmp = 0;
 			while (tmp < limit)
 			{
-				int32_t ref = 2;
-				bool succ = false;
-				while (!succ && ref != 0)
-				{
-					ref = 0;
-					succ = lock.compare_exchange_strong(ref, 2, memory_order_release, memory_order_acquire);
-				}
+				lock.acquire_write();
 
 				tmp = ++g_count;
 				cout << "write count:" << tmp << endl;
 
-				lock.store(0, memory_order_release);
+				lock.release_write();
 
 				Sleep(1);
 			}
