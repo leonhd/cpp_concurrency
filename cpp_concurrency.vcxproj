@@ -146,6 +146,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="test_atomics.h" />
+    <ClInclude Include="test_sync.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
