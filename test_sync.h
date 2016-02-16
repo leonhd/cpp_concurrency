@@ -103,7 +103,7 @@ public:
 			T ret;
 			while (atomic_queue.pop(ret))
 			{
-				cout << "2 " << ret << endl;
+				cout << this_thread::get_id() << "\t" << ret << endl;
 			}
 			//cout << ret << endl;
 		});
@@ -112,7 +112,7 @@ public:
 			T ret;
 			while (atomic_queue.pop(ret))
 			{
-				cout << "3 " << ret << endl;
+				cout << this_thread::get_id() << "\t" << ret << endl;
 			}
 			//cout << ret << endl;
 		});
