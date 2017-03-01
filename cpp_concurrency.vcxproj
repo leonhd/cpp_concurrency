@@ -153,9 +153,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="test_normal.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="test_atomics.h" />
+    <ClInclude Include="test_normal.h" />
     <ClInclude Include="test_sync.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
