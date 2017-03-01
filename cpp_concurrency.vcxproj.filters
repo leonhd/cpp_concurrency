@@ -15,16 +15,16 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
     <ClInclude Include="test_atomics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="test_sync.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>
