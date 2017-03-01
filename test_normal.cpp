@@ -31,7 +31,7 @@ public:
 };
 
 volatile int32_t ival = 0;
-atomic<int32_t> a_ival = 0;
+atomic<int32_t> a_ival;
 void normal_tester_t::test_mem_access(int32_t count)
 {
 	using clock_t = chrono::high_resolution_clock;
@@ -112,6 +112,6 @@ void normal_tester_t::test_mem_access(int32_t count)
 		clock_t::time_point t1 = clock_t::now();
 
 		us_t time_span = chrono::duration_cast<us_t>(t1 - t0);
-		std::cout << "\taccess to atoimic: it takes " << time_span.count() << " us to get the result " << sum << std::endl;
+		std::cout << "\taccess to atomic: it takes " << time_span.count() << " us to get the result " << sum << std::endl;
 	}
 }

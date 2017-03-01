@@ -68,9 +68,8 @@ public:
 			int32_t count = 0;
 			while (status.load(memory_order_acquire) == 0)
 			{
-                //this_thread::sleep_for(chrono::seconds(unit / 1000.0));
-                ::Sleep(unit);
-				cout << count++ << endl;
+                this_thread::sleep_for((chrono::duration<double, ratio<1, 1>>)(unit / 1000.0));
+                cout << count++ << endl;
 			}
 
 			status += 1;
@@ -81,7 +80,7 @@ public:
 		int32_t limit = (time_span_ms + unit - 1) / unit;
 		while (count < limit && status.load(memory_order_acquire) == 0)
 		{
-			::Sleep(unit);
+			this_thread::sleep_for((chrono::duration<double, ratio<1, 1>>)(unit / 1000.0));
 			++count;
 		}
 		status += 1;
@@ -107,7 +106,7 @@ public:
 
 				lock.release_read();
 
-				Sleep(1);
+				this_thread::sleep_for((chrono::duration<double, ratio<1, 1>>)(1 / 1000.0));;
 			}
 		});
 
@@ -120,7 +119,7 @@ public:
 
 				lock.release_read();
 
-				Sleep(1);
+				this_thread::sleep_for((chrono::duration<double, ratio<1, 1>>)(1 / 1000.0));;
 			}
 		});
 
@@ -135,7 +134,7 @@ public:
 
 				lock.release_write();
 
-				Sleep(1);
+				this_thread::sleep_for((chrono::duration<double, ratio<1, 1>>)(1 / 1000.0));
 			}
 		});
 
