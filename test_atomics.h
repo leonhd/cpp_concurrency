@@ -2,7 +2,8 @@
 #include <thread>
 #include <atomic>
 #include <stdint.h>
-#include <windows.h>
+//#include <windows.h>
+#include <thread>
 #include <iostream>
 using namespace std;
 
@@ -59,14 +60,16 @@ public:
 	//sync based on atomics
 	static void test1(int32_t time_span_ms)
 	{
-		atomic<int32_t> status = 0;
+		atomic<int32_t> status;
+		status = 0;
 
 		thread t1([&]{
 			int32_t unit = 100;
 			int32_t count = 0;
 			while (status.load(memory_order_acquire) == 0)
 			{
-				::Sleep(unit);
+                //this_thread::sleep_for(chrono::seconds(unit / 1000.0));
+                ::Sleep(unit);
 				cout << count++ << endl;
 			}
 
@@ -92,7 +95,8 @@ public:
 	{
 		int g_count = 0;
 		rw_lock_t<int32_t> lock;
-		atomic<int32_t> read_end = false;
+		atomic<int32_t> read_end;
+		read_end = false;
 
 		thread t1([&]{
 			while (!read_end)
