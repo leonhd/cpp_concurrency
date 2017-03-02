@@ -6,10 +6,10 @@
 
 int32_t main(int32_t argc, const char** argv)
 {
-	sync_tester_t::test_sync_queue<int32_t>(1000000);
+	atomics_tester_t::test_atomics_rb<int64_t>(1000000);
 	return 0;
 
-	atomics_tester_t::test_atomics_rb<int64_t>(1000000);
+	sync_tester_t::test_sync_queue<int32_t>(1000000);
 	return 0;
 
 	normal_tester_t::test_mem_access(10000000);
