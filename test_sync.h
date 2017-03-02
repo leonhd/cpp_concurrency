@@ -9,16 +9,16 @@
 using namespace std;
 
 template<typename T>
-class atomic_queue_t
+class sync_queue_t
 {
 	mutable mutex mut_;
 	condition_variable cond_;
 	queue<T> data_que_;
 	bool signaled_;
 public:
-	atomic_queue_t() : signaled_(false) {};
+	sync_queue_t() : signaled_(false) {};
 
-	atomic_queue_t(atomic_queue_t const& other)
+	sync_queue_t(sync_queue_t const& other)
 	{
 		lock_guard<mutex> lk(other.mut_);
 		data_que_ = other.data_que_;
@@ -87,21 +87,21 @@ class sync_tester_t
 public:
 
 	template<typename T>
-	static void test_atomic_queue(int32_t count)
+	static void test_sync_queue(int32_t count)
 	{
-		atomic_queue_t<T> atomic_queue;		
+		sync_queue_t<T> sync_queue;		
 
 		thread t1([&]{
 			T val = 0;
 			for (int32_t i = 0; i < count; ++i)
-				atomic_queue.push(val++);
+				sync_queue.push(val++);
 
-			atomic_queue.signal(true);
+			sync_queue.signal(true);
 		});
 
 		thread t2([&]{
 			T ret;
-			while (atomic_queue.pop(ret))
+			while (sync_queue.pop(ret))
 			{
 				cout << this_thread::get_id() << "\t" << ret << endl;
 			}
@@ -110,7 +110,7 @@ public:
 
 		thread t3([&]{
 			T ret;
-			while (atomic_queue.pop(ret))
+			while (sync_queue.pop(ret))
 			{
 				cout << this_thread::get_id() << "\t" << ret << endl;
 			}
