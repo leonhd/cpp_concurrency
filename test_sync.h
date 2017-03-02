@@ -6,6 +6,7 @@
 #include <thread>
 #include <atomic>
 #include <iostream>
+#include <chrono>
 using namespace std;
 
 template<typename T>
@@ -41,7 +42,7 @@ public:
 	{
 		unique_lock<mutex> lk(mut_);
 		cond_.wait(lk, [&]{ return !data_que_.empty() || signaled_; });
-		
+
 		bool ret_tag = !data_que_.empty();
 		if (ret_tag)
 		{
@@ -89,8 +90,32 @@ public:
 	template<typename T>
 	static void test_sync_queue(int32_t count)
 	{
-		sync_queue_t<T> sync_queue;		
+		using clock_t = chrono::high_resolution_clock;
+		using us_t = chrono::duration<double, std::ratio<1, 1000000>>;
+		std::cout << "loop count: " << count << std::endl;
 
+		clock_t::time_point t_start = clock_t::now();
+		sync_queue_t<T> sync_queue;
+
+		thread t2([&]{
+			T ret = -1;
+			while (sync_queue.pop(ret))
+			{
+				//cout << this_thread::get_id() << "\t" << ret << endl;
+			}
+			cout << "last value of thread t2(" << this_thread::get_id() << "): " << ret << endl;
+		});
+
+		thread t3([&]{
+			T ret = -1;
+			while (sync_queue.pop(ret))
+			{
+				//cout << this_thread::get_id() << "\t" << ret << endl;
+			}
+			cout << "last value of thread t3(" << this_thread::get_id() << "): " << ret << endl;
+		});
+
+		//this_thread::sleep_for((us_t)10000);
 		thread t1([&]{
 			T val = 0;
 			for (int32_t i = 0; i < count; ++i)
@@ -99,26 +124,11 @@ public:
 			sync_queue.signal(true);
 		});
 
-		thread t2([&]{
-			T ret;
-			while (sync_queue.pop(ret))
-			{
-				cout << this_thread::get_id() << "\t" << ret << endl;
-			}
-			//cout << ret << endl;
-		});
-
-		thread t3([&]{
-			T ret;
-			while (sync_queue.pop(ret))
-			{
-				cout << this_thread::get_id() << "\t" << ret << endl;
-			}
-			//cout << ret << endl;
-		});
-
-		t1.join();
 		t2.join();
 		t3.join();
+		t1.join();
+		clock_t::time_point t_stop = clock_t::now();
+		us_t time_span = chrono::duration_cast<us_t>(t_stop - t_start);
+		std::cout << "push/pop " << count << " entries costs " << time_span.count() << "us" << std::endl;
 	}
 };
