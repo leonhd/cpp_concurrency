@@ -54,10 +54,10 @@ public:
 	}
 };
 
-#define _declcachealign __declspec(align(64))
+//#define _declcachealign alignas(64)
 
 template<typename T, int32_t BUF_SIZE_LOG2>
-class _declcachealign ring_buf_t
+class alignas(64) ring_buf_t
 {
 public:
 	typedef	T ele_typ;
@@ -69,10 +69,10 @@ private:
 
 	static const int64_t pos_mask_ = buf_size_ - 1;
 
-	atomic<int64_t> _declcachealign write_pos_, next_write_pos_;
-	atomic<int64_t> _declcachealign read_pos_, next_read_pos_;
+	alignas(64) atomic<int64_t> write_pos_, next_write_pos_;
+	alignas(64) atomic<int64_t> read_pos_, next_read_pos_;
 
-	struct _declcachealign aligned_ele_typ
+	struct alignas(64) aligned_ele_typ
 	{
 		ele_typ val_;
 	};
@@ -304,11 +304,15 @@ public:
 				while (!sync_queue.check_readable(pos, 1) && !signal.load(memory_order::memory_order_acquire))
 					this_thread::yield();
 
-				ret = sync_queue.get(pos);
-				sync_queue.publish_read(pos, 1);
-				//cout << this_thread::get_id() << "\t" << ret << endl;
-				++loops;
+                if (sync_queue.check_readable(pos, 1))
+                {
+                    ret = sync_queue.get(pos);
+                    sync_queue.publish_read(pos, 1);
+                }
+                //cout << this_thread::get_id() << "\t" << ret << endl;
+                ++loops;
 			}
+            cout << "t3 ended" << std::endl;
 			ret3 = ret;
 			t3_loop = loops;
 		});
@@ -322,11 +326,15 @@ public:
 				while (!sync_queue.check_readable(pos, 1) && !signal.load(memory_order::memory_order_acquire))
 					this_thread::yield();
 
-				ret = sync_queue.get(pos);
-				sync_queue.publish_read(pos, 1);
+                if (sync_queue.check_readable(pos, 1))
+                {
+                    ret = sync_queue.get(pos);
+                    sync_queue.publish_read(pos, 1);
+				}
 				//cout << this_thread::get_id() << "\t" << ret << endl;
 				++loops;
 			}
+			cout << "t2 ended" << std::endl;
 			ret2 = ret;
 			t2_loop = loops;
 		});
@@ -346,13 +354,20 @@ public:
 				sync_queue.publish_write(pos, 1);
 			}
 
+            cout << "t1 finished pushing data" << std::endl;
+            while (sync_queue.get_readable_count())
+            {
+                //this_thread::sleep_for((chrono::duration<int64_t, ratio<1, 10000>>)1);
+                this_thread::yield();
+            }
 			signal.store(true, memory_order::memory_order_release);
+			cout << "t1 ended" << std::endl;
 		});
 
 		thread::id t2_id = t2.get_id(), t3_id = t3.get_id();
+		t1.join();
 		t2.join();
 		t3.join();
-		t1.join();
 		clock_t::time_point t_stop = clock_t::now();
 		us_t time_span = chrono::duration_cast<us_t>(t_stop - t_start);
 		cout << "last value of thread t2(" << t2_id << "): " << ret2 << " after " << t2_loop << " loops" << endl;
