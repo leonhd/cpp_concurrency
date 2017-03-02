@@ -136,17 +136,17 @@ public:
 
 	bool check_writable(int64_t pos, int64_t len)
 	{
-		return (pos + len <= read_pos_ + buf_size_);
+		return (pos + len <= read_pos_.load(memory_order::memory_order_acquire) + buf_size_);
 	}
 
 	int64_t get_writable_count(int64_t pos)
 	{
-		return (read_pos_ + buf_size_ - pos);
+		return (read_pos_.load(memory_order::memory_order_acquire) + buf_size_ - pos);
 	}
 
 	int64_t get_writable_count()
 	{
-		return get_writable_count(next_write_pos_);
+		return get_writable_count(next_write_pos_.load(memory_order::memory_order_acquire));
 	}
 
 	int64_t prepare_read(int64_t len)
@@ -174,17 +174,17 @@ public:
 
 	bool check_readable(int64_t pos, int64_t len)
 	{
-		return (pos + len <= write_pos_);
+		return (pos + len <= write_pos_.load(memory_order::memory_order_acquire));
 	}
 
 	int64_t get_readable_count(int64_t pos)
 	{
-		return (write_pos_ - pos);
+		return (write_pos_.load(memory_order::memory_order_acquire) - pos);
 	}
 
 	int64_t get_readable_count()
 	{
-		return get_readable_count(next_read_pos_);
+		return get_readable_count(next_read_pos_.load(memory_order::memory_order_acquire));
 	}
 };
 
@@ -312,8 +312,7 @@ public:
                 //cout << this_thread::get_id() << "\t" << ret << endl;
                 ++loops;
 			}
-            cout << "t3 ended" << std::endl;
-			ret3 = ret;
+            ret3 = ret;
 			t3_loop = loops;
 		});
 
@@ -334,7 +333,6 @@ public:
 				//cout << this_thread::get_id() << "\t" << ret << endl;
 				++loops;
 			}
-			cout << "t2 ended" << std::endl;
 			ret2 = ret;
 			t2_loop = loops;
 		});
@@ -354,14 +352,12 @@ public:
 				sync_queue.publish_write(pos, 1);
 			}
 
-            cout << "t1 finished pushing data" << std::endl;
-            while (sync_queue.get_readable_count())
+            while (sync_queue.get_readable_count() >= 0)
             {
-                //this_thread::sleep_for((chrono::duration<int64_t, ratio<1, 10000>>)1);
+                this_thread::sleep_for((chrono::duration<int64_t, ratio<1, 10000>>)1);
                 this_thread::yield();
             }
 			signal.store(true, memory_order::memory_order_release);
-			cout << "t1 ended" << std::endl;
 		});
 
 		thread::id t2_id = t2.get_id(), t3_id = t3.get_id();
