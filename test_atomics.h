@@ -55,7 +55,7 @@ public:
 };
 
 //#define _declcachealign alignas(64)
-
+#define ALIGNED_ELEMENT 1
 template<typename T, int32_t BUF_SIZE_LOG2>
 class alignas(64) ring_buf_t
 {
@@ -66,19 +66,23 @@ public:
 	static const int32_t entry_size_ = sizeof(T);
 
 private:
-
 	static const int64_t pos_mask_ = buf_size_ - 1;
 
-	alignas(64) atomic<int64_t> write_pos_, next_write_pos_;
-	alignas(64) atomic<int64_t> read_pos_, next_read_pos_;
+	alignas(64) atomic<int64_t> write_pos_;
+	alignas(64) atomic<int64_t> next_write_pos_;
+	alignas(64) atomic<int64_t> read_pos_;
+	alignas(64) atomic<int64_t> next_read_pos_;
 
+#if ALIGNED_ELEMENT
 	struct alignas(64) aligned_ele_typ
 	{
 		ele_typ val_;
 	};
 
-	aligned_ele_typ* buf_;
-	//ele_typ buf_[buf_size_];
+	alignas(64) aligned_ele_typ* buf_;
+#else
+	ele_typ* buf_;
+#endif
 public:
 	ring_buf_t()
 	{
@@ -87,7 +91,11 @@ public:
 		read_pos_ = 0;
 		next_read_pos_ = 0;
 
+#if ALIGNED_ELEMENT
 		buf_ = new aligned_ele_typ[buf_size_];
+#else
+		buf_ = new ele_typ[buf_size_];
+#endif
 	}
 
 	~ring_buf_t()
@@ -108,7 +116,11 @@ public:
 
 	ele_typ& get(int64_t pos)
 	{
+#if ALIGNED_ELEMENT
 		return buf_[pos & pos_mask_].val_;
+#else
+		return buf_[pos & pos_mask_];
+#endif
 	}
 
 	int64_t prepare_write(int64_t len)

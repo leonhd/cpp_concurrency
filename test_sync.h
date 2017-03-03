@@ -97,23 +97,30 @@ public:
 		clock_t::time_point t_start = clock_t::now();
 		sync_queue_t<T> sync_queue;
 		T ret2, ret3;
+		int32_t loop2, loop3;
 
 		thread t3([&]{
 			T ret = -1;
+			int32_t loops = 0;
 			while (sync_queue.pop(ret))
 			{
 				//cout << this_thread::get_id() << "\t" << ret << endl;
+				++loops;
 			}
 			ret3 = ret;
+			loop3 = loops;
 		});
 
 		thread t2([&]{
 			T ret = -1;
+			int32_t loops = 0;
 			while (sync_queue.pop(ret))
 			{
 				//cout << this_thread::get_id() << "\t" << ret << endl;
+				++loops;
 			}
 			ret2 = ret;
+			loop2 = loops;
 		});
 
 		//this_thread::sleep_for((us_t)10000);
@@ -131,8 +138,8 @@ public:
 		t1.join();
 		clock_t::time_point t_stop = clock_t::now();
 		us_t time_span = chrono::duration_cast<us_t>(t_stop - t_start);
-		cout << "last value of thread t2(" << this_thread::get_id() << "): " << ret2 << endl;
-		cout << "last value of thread t3(" << this_thread::get_id() << "): " << ret3 << endl;
+		cout << "last value of thread t2(" << this_thread::get_id() << "): " << ret2 << " after " << loop2 << " loops" << endl;
+		cout << "last value of thread t3(" << this_thread::get_id() << "): " << ret3 << " after " << loop3 << " loops" << endl;
 		std::cout << "push/pop " << count << " entries costs " << time_span.count() << "us" << std::endl;
 	}
 };
