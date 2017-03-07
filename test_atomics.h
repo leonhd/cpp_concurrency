@@ -55,7 +55,7 @@ public:
 };
 
 //#define _declcachealign alignas(64)
-#define ALIGNED_ELEMENT 1
+#define ALIGNED_ELEMENT 0
 template<typename T, int32_t BUF_SIZE_LOG2>
 class alignas(64) ring_buf_t
 {
@@ -302,54 +302,30 @@ public:
 		typedef ring_buf_t<T, 20> rb_t;
 		cout << "size of ring buffer is " << sizeof(rb_t) << std::endl;
 		rb_t sync_queue;
-		T ret2, ret3;
-		int32_t t2_loop, t3_loop;
+		T ret2, ret3, ret4;
+		int32_t t2_loop, t3_loop, t4_loop;
 		atomic<bool> signal;
 		signal = false;
 
-		thread t3([&] {
-			T ret = -1;
-			int32_t loops = 0;
+		auto fn_reader = [&](T &ret, int32_t& loops)
+		{
+			ret = -1;
+			loops = 0;
 			while (!signal.load(memory_order::memory_order_acquire))
 			{
 				int64_t pos = sync_queue.prepare_read(1);
 				while (!sync_queue.check_readable(pos, 1) && !signal.load(memory_order::memory_order_acquire))
 					this_thread::yield();
 
-                if (sync_queue.check_readable(pos, 1))
-                {
-                    ret = sync_queue.get(pos);
-                    sync_queue.publish_read(pos, 1);
-                }
-                //cout << this_thread::get_id() << "\t" << ret << endl;
-                ++loops;
-			}
-            ret3 = ret;
-			t3_loop = loops;
-		});
-
-		thread t2([&] {
-			T ret = -1;
-			int32_t loops = 0;
-			while (!signal.load(memory_order::memory_order_acquire))
-			{
-				int64_t pos = sync_queue.prepare_read(1);
-				while (!sync_queue.check_readable(pos, 1) && !signal.load(memory_order::memory_order_acquire))
-					this_thread::yield();
-
-                if (sync_queue.check_readable(pos, 1))
-                {
-                    ret = sync_queue.get(pos);
-                    sync_queue.publish_read(pos, 1);
+				if (sync_queue.check_readable(pos, 1))
+				{
+					ret = sync_queue.get(pos);
+					sync_queue.publish_read(pos, 1);
 				}
 				//cout << this_thread::get_id() << "\t" << ret << endl;
 				++loops;
 			}
-			ret2 = ret;
-			t2_loop = loops;
-		});
-
-		//this_thread::sleep_for((us_t)10000);
+		};
 
 		thread t1([&] {
 			T val = 0;
@@ -372,14 +348,22 @@ public:
 			signal.store(true, memory_order::memory_order_release);
 		});
 
-		thread::id t2_id = t2.get_id(), t3_id = t3.get_id();
+		thread t3(std::bind(fn_reader, std::ref<T>(ret3), std::ref<int32_t>(t3_loop)));
+
+		thread t2(std::bind(fn_reader, std::ref<T>(ret2), std::ref<int32_t>(t2_loop)));
+
+		thread t4(std::bind(fn_reader, std::ref<T>(ret4), std::ref<int32_t>(t4_loop)));
+
+		thread::id t2_id = t2.get_id(), t3_id = t3.get_id(), t4_id = t4.get_id();
 		t1.join();
 		t2.join();
 		t3.join();
+		t4.join();
 		clock_t::time_point t_stop = clock_t::now();
 		us_t time_span = chrono::duration_cast<us_t>(t_stop - t_start);
 		cout << "last value of thread t2(" << t2_id << "): " << ret2 << " after " << t2_loop << " loops" << endl;
 		cout << "last value of thread t3(" << t3_id << "): " << ret3 << " after " << t3_loop << " loops" << endl;
+		cout << "last value of thread t4(" << t4_id << "): " << ret4 << " after " << t4_loop << " loops" << endl;
 		std::cout << "push/pop " << count << " entries costs " << time_span.count() << "us" << std::endl;
 	}
 };

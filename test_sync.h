@@ -96,34 +96,25 @@ public:
 
 		clock_t::time_point t_start = clock_t::now();
 		sync_queue_t<T> sync_queue;
-		T ret2, ret3;
-		int32_t loop2, loop3;
+		T ret2, ret3, ret4;
+		int32_t loop2, loop3, loop4;
 
-		thread t3([&]{
-			T ret = -1;
-			int32_t loops = 0;
-			while (sync_queue.pop(ret))
+		auto fn_reader = [&](T &ret, int32_t & loops)
+		{
+			T ret_val = -1;
+			int32_t loop_val = 0;
+			while (sync_queue.pop(ret_val))
 			{
 				//cout << this_thread::get_id() << "\t" << ret << endl;
-				++loops;
+				++loop_val;
 			}
-			ret3 = ret;
-			loop3 = loops;
-		});
+			ret = ret_val;
+			loops = loop_val;
+		};
 
-		thread t2([&]{
-			T ret = -1;
-			int32_t loops = 0;
-			while (sync_queue.pop(ret))
-			{
-				//cout << this_thread::get_id() << "\t" << ret << endl;
-				++loops;
-			}
-			ret2 = ret;
-			loop2 = loops;
-		});
-
-		//this_thread::sleep_for((us_t)10000);
+		thread t4(std::bind(fn_reader, std::ref<T>(ret4), std::ref<int32_t>(loop4)));
+		thread t3(std::bind(fn_reader, std::ref<T>(ret3), std::ref<int32_t>(loop3)));
+		thread t2(std::bind(fn_reader, std::ref<T>(ret2), std::ref<int32_t>(loop2)));
 		
 		thread t1([&]{
 			T val = 0;
@@ -133,13 +124,16 @@ public:
 			sync_queue.signal(true);
 		});
 
+		thread::id t2_id = t2.get_id(), t3_id = t3.get_id(), t4_id = t4.get_id();
 		t2.join();
 		t3.join();
+		t4.join();
 		t1.join();
 		clock_t::time_point t_stop = clock_t::now();
 		us_t time_span = chrono::duration_cast<us_t>(t_stop - t_start);
-		cout << "last value of thread t2(" << this_thread::get_id() << "): " << ret2 << " after " << loop2 << " loops" << endl;
-		cout << "last value of thread t3(" << this_thread::get_id() << "): " << ret3 << " after " << loop3 << " loops" << endl;
+		cout << "last value of thread t2(" << t2_id << "): " << ret2 << " after " << loop2 << " loops" << endl;
+		cout << "last value of thread t3(" << t3_id << "): " << ret3 << " after " << loop3 << " loops" << endl;
+		cout << "last value of thread t4(" << t4_id << "): " << ret4 << " after " << loop4 << " loops" << endl;
 		std::cout << "push/pop " << count << " entries costs " << time_span.count() << "us" << std::endl;
 	}
 };
