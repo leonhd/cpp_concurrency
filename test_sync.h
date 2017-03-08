@@ -7,6 +7,7 @@
 #include <atomic>
 #include <iostream>
 #include <chrono>
+#include <array>
 using namespace std;
 
 template<typename T>
@@ -96,11 +97,13 @@ public:
 
 		clock_t::time_point t_start = clock_t::now();
 		sync_queue_t<T> sync_queue;
-		T ret2, ret3, ret4;
-		int32_t loop2, loop3, loop4;
+		std::array<T, 3> ret_vals;
+		std::array<int32_t, 3> loops;
+		std::array<thread::id, 3> tids;
 
-		auto fn_reader = [&](T &ret, int32_t & loops)
+		auto fn_reader = [&](T &ret, int32_t & loops, thread::id & tid)
 		{
+			tid = this_thread::get_id();
 			T ret_val = -1;
 			int32_t loop_val = 0;
 			while (sync_queue.pop(ret_val))
@@ -112,9 +115,9 @@ public:
 			loops = loop_val;
 		};
 
-		thread t4(std::bind(fn_reader, std::ref<T>(ret4), std::ref<int32_t>(loop4)));
-		thread t3(std::bind(fn_reader, std::ref<T>(ret3), std::ref<int32_t>(loop3)));
-		thread t2(std::bind(fn_reader, std::ref<T>(ret2), std::ref<int32_t>(loop2)));
+		thread t4(std::bind(fn_reader, std::ref<T>(ret_vals[2]), std::ref<int32_t>(loops[2]), std::ref<thread::id>(tids[2])));
+		thread t3(std::bind(fn_reader, std::ref<T>(ret_vals[1]), std::ref<int32_t>(loops[1]), std::ref<thread::id>(tids[1])));
+		thread t2(std::bind(fn_reader, std::ref<T>(ret_vals[0]), std::ref<int32_t>(loops[0]), std::ref<thread::id>(tids[0])));
 		
 		thread t1([&]{
 			T val = 0;
@@ -124,16 +127,14 @@ public:
 			sync_queue.signal(true);
 		});
 
-		thread::id t2_id = t2.get_id(), t3_id = t3.get_id(), t4_id = t4.get_id();
 		t2.join();
 		t3.join();
 		t4.join();
 		t1.join();
 		clock_t::time_point t_stop = clock_t::now();
 		us_t time_span = chrono::duration_cast<us_t>(t_stop - t_start);
-		cout << "last value of thread t2(" << t2_id << "): " << ret2 << " after " << loop2 << " loops" << endl;
-		cout << "last value of thread t3(" << t3_id << "): " << ret3 << " after " << loop3 << " loops" << endl;
-		cout << "last value of thread t4(" << t4_id << "): " << ret4 << " after " << loop4 << " loops" << endl;
+		for (int32_t i = 0; i < tids.size(); ++i)			
+			cout << "last value of reader thread " << i << "(" << tids[i] << "): " << ret_vals[i] << " after " << loops[i] << " loops" << endl;
 		std::cout << "push/pop " << count << " entries costs " << time_span.count() << "us" << std::endl;
 	}
 };
