@@ -126,6 +126,7 @@ public:
 
 			sync_queue.signal(true);
 		});
+		std::cout << thread::hardware_concurrency() << std::endl;
 
 		t2.join();
 		t3.join();
